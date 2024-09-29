@@ -1,26 +1,74 @@
+import { useEffect, useState } from 'react';
+
 import CommentContainer from './commentContainer';
 import ContentContainer from './contentContainer';
 
-export default function PostDetail() {
+interface Content {
+  id: number;
+  title: string;
+  body: string;
+}
+
+interface Comment {
+  id: number;
+  postId: number;
+  email: string;
+  body: string;
+}
+
+interface PostDetailProps {
+  postId: number | null;
+}
+
+export default function PostDetail({ postId }: PostDetailProps) {
+  const [content, setContent] = useState<Content | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+
+  useEffect(() => {
+    if (postId === null) {
+      return;
+    }
+
+    const fetchPostAndComments = async () => {
+      try {
+        const [postResponse, commentsResponse] = await Promise.all([
+          fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`),
+          fetch(
+            `https://jsonplaceholder.typicode.com/posts/${postId}/comments`,
+          ),
+        ]);
+
+        const contentData: Content = (await postResponse.json()) as Content;
+        const commentsData: Comment[] =
+          (await commentsResponse.json()) as Comment[];
+
+        setContent(contentData);
+        setComments(commentsData);
+      } catch (error) {
+        console.error('api response error', error);
+      }
+    };
+
+    void fetchPostAndComments();
+  }, [postId]);
+
   return (
-    <div className="w-full h-full flex flex-col items-left justify-center">
-      <div className="w-full h-1/2 py-5 px-6 border-dashed border-b-2 border-red-300">
-        <div className="text-2xl font-bold text-red-400 pb-3 ">내용</div>
-        <div className="text-sm">
-          <ContentContainer />
+    <div className="h-full overflow-y-auto no-scrollbar py-5 px-6">
+      {content !== null && (
+        <div className="w-full h-auto pb-2 border-dashed border-b-2 border-red-300">
+          <div className="text-2xl font-bold text-red-400 pb-2 ">내용</div>
+          <ContentContainer body={content.body} />
         </div>
-      </div>
-      <div className="w-full h-1/2 pt-5 px-6 justify-center">
-        <div className="text-2xl font-bold text-red-400 pb-1">댓글</div>
-        <div className="overflow-y-scroll no-scrollbar h-4/5">
-          <CommentContainer />
-          <CommentContainer />
-          <CommentContainer />
-          <CommentContainer />
-          <CommentContainer />
-          <CommentContainer />
-        </div>
-      </div>
+      )}
+
+      <div className="text-2xl font-bold text-red-400 pt-4 pb-2">댓글</div>
+      {comments.map((comment) => (
+        <CommentContainer
+          key={comment.id}
+          email={comment.email}
+          body={comment.body}
+        />
+      ))}
     </div>
   );
 }
